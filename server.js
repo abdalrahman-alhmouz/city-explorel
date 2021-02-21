@@ -78,8 +78,3 @@ function wetherData(searchQuery) {
 app.listen(PORT, () => {
     console.log('the app is listining on port ' + PORT);
 });
-
-
-
-
-
