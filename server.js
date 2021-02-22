@@ -52,59 +52,88 @@ function Citylocation(searchQuery, displayName, lat, lon) {
 
 
 
-app.get('/weather', (req, res) => {
-    let arrayOfWeather = [];
-    const weatherCity = req.query.city;
-    // const getData = require('./data/weather.json');
-    let key = process.env.WEATHER_API_KEY;
-    let url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${weatherCity}&key=${key}`;
+
+
+app.get("/weather", handleWeather);
+
+function handleWeather(req, res) {
+
+    let lat = req.query.latitude;
+    let log = req.query.longitude;
+    getWeatherData(res, log, lat);
+}
+function getWeatherData(res, lat, log) {
+
+    try {
+        let weatherQuery = {
+            lat: lat,
+            lon: log,
+            key: process.env.WEATHER_API_KEY
+        }
+        let weatherUrl = 'https://api.weatherbit.io/v2.0/forecast/daily';
+        // let weatherData = require("./data/weather.json");
+
+
+        superagent.get(weatherUrl).query(weatherQuery).then(getData => {
+            let weatherArray = [];
+            let casting = getData.body.data;
+            // console.log(casting);
+
+            for (let i = 0; i < casting.length; i++) {
+                let newDateTime = new Date(casting[i].valid_date).toString();
+                let stringDate = newDateTime.split(" ").splice(0, 4).join(" ");
+
+                let obj = new CityWeather(casting[i].weather.description, stringDate);
+                weatherArray.push(obj);
+            }
+            // console.log(weatherArray);
+            res.status(200).send(weatherArray);
+        }).catch(error => {
+            res.status(500).send(error)
+        })
+    } catch (error) {
+        res.status(500).send('there was an error getting data from API' + error);
+    }
+
+}
+function CityWeather(casting, timing) {
+    this.forecast = casting;
+    this.time = timing;
+}
+
+
+
+
+
+app.get('/parks', handlePark);
+
+function handlePark(req, res) {
+    let key = process.env.PARKS_API_KEY;
+    const city = req.query.search_query;
+    let url =  `https://developer.nps.gov/api/v1/parks?limit=10&q=${city}&api_key=${key}&limit=2`;
 
     superagent.get(url)
-        .then(getData => {
-
-            arrayOfWeather = getData.body.data.map((val) => {
-                return new Weather(val);
+        .then(parkData => {
+            let parkArr = parkData.body.data.map(val => {
+                console.log(new Park(val));
+                return new Park(val);
             })
-            res.status(200).send(arrayOfWeather);
+            res.status(200).send(parkArr);
         })
-})
-
-function Weather(getData) {
-    // this.search_query = weatherCity;
-    this.description = getData.weather.description;
-    this.time = getData.valid_date;
+        .catch(() => {
+            res.status(500).send('Sorry something went wrong!!');
+        })
 }
 
 
-app.get('/parks', (req, res) => {
-    let arrayOfPark=[];
-    let thirdKey =process.env.PARKS_API_KEY;
-    let lat = req.query.lat;
-    let lon = req.query.lon;
-    let url = `https://developer.nps.gov/api/v1/parks?lat=${lat}&lon=${lon}&parkCode=acad&api_key=${thirdKey}`;
 
-    superagent.get(url).then(getData=>{
-        arrayOfPark=getData.body.data.map((val)=>{
-            return new Parkto(val);
-
-        })
-        res.status(200).json(arrayOfPark);
-        
-    })
-
-  
-})
-
-function Parkto(element) {
-    this.name=element.name;
-    this.address=element.address;
-    this.fee=element.fee;
-    this.description=element.description;
-
-    
+function Park(data) {
+    this.name = data.name;
+    this.address = Object.values(data.addresses[0]).join(' ');
+    this.fee = data.entranceFees[0].cost;
+    this.description = data.description;
+    this.url = data.url;
 }
-
-
 
 app.use('*', (req, res) => {
     res.status(500).send('Sorry, something went wrong');
