@@ -1,5 +1,6 @@
 # city-explorel
 
+
 Overview
 
 
@@ -11,6 +12,7 @@ Estimate of time needed to complete: __6hours ___
 
 Start time: _1.40 pm
 
-Finish time: _6.40 pm
+Finish time: _8.40 pm
 
-Actual time needed to complete: __5 hours ___
+Actual time needed to complete: __7 hours ___
+
