@@ -16,7 +16,7 @@ function handelLocation(req, res) {
     let searchQuery = req.query.city;
     getLocationData(searchQuery,res)
 
-    ;
+    
 };
 
 
@@ -41,6 +41,7 @@ superagent.get(url).then(data=>{
 };
 
 // constr
+
 function Citylocation(searchQuery, displayName, lat, lon) {
     this.search_query = searchQuery;
     this.formatted_query = displayName;
