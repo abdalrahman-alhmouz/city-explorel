@@ -21,7 +21,8 @@ function handelLocation(req, res) {
 
 
 function getLocationData(searchQuery,res) {
-    let url =`https://us1.locationiq.com/v1/search.php?key=pk.b66bb6def07a3a462a9859a5f7a3bb71&q=${searchQuery}&format=json`
+    let keyOne=process.env.GEOCODE_API_KEY 
+    let url =`https://us1.locationiq.com/v1/search.php?key=${keyOne}&q=${searchQuery}&format=json`
 superagent.get(url).then(data=>{
    try{
     let longitude = data.body[0].lon;
@@ -49,40 +50,60 @@ function Citylocation(searchQuery, displayName, lat, lon) {
     this.longitude = lon;
 }
 
-app.get('/weather', handleWeather);
 
-function CityWeather(weatherDesc, time) {
-    this.forecast = weatherDesc;
-    this.time = time;
+
+app.get('/weather', (req, res) => {
+    let arrayOfWeather = [];
+    const weatherCity = req.query.city;
+    // const getData = require('./data/weather.json');
+    let key = process.env.WEATHER_API_KEY;
+    let url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${weatherCity}&key=${key}`;
+
+    superagent.get(url)
+        .then(getData => {
+
+            arrayOfWeather = getData.body.data.map((val) => {
+                return new Weather(val);
+            })
+            res.status(200).send(arrayOfWeather);
+        })
+})
+
+function Weather(getData) {
+    // this.search_query = weatherCity;
+    this.description = getData.weather.description;
+    this.time = getData.valid_date;
 }
 
 
-function handleWeather(req, res) {
-    let searchQuery = req.query.city;
-    let weathrr = wetherData(searchQuery);
-    res.status(200).send(weathrr);
+app.get('/parks', (req, res) => {
+    let arrayOfPark=[];
+    let thirdKey =process.env.PARKS_API_KEY;
+    let lat = req.query.lat;
+    let lon = req.query.lon;
+    let url = `https://developer.nps.gov/api/v1/parks?lat=${lat}&lon=${lon}&parkCode=acad&api_key=${thirdKey}`;
+
+    superagent.get(url).then(getData=>{
+        arrayOfPark=getData.body.data.map((val)=>{
+            return new Parkto(val);
+
+        })
+        res.status(200).json(arrayOfPark);
+        
+    })
+
+  
+})
+
+function Parkto(element) {
+    this.name=element.name;
+    this.address=element.address;
+    this.fee=element.fee;
+    this.description=element.description;
+
+    
 }
 
-
-
-function wetherData(searchQuery) {
-
-    let weatherData = require('./data/weather.json');
-    let obJectArray = [];
-    for (let i = 0; i < weatherData.data.length; i++) {
-        let weatherDesc = weatherData.data[i].weather['description'];
-        let time = weatherData.data[i].datetime;
-        time = time.replace("-", "/");
-        var date = new Date(time);
-        let timeData = date.toString();
-        var newDate = timeData.slice(" ", 16);
-
-
-        let responseObject = new CityWeather(weatherDesc, newDate);
-        obJectArray.push(responseObject);
-    }
-    return obJectArray;
-}
 
 
 app.use('*', (req, res) => {
