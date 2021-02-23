@@ -8,36 +8,52 @@ app.use(cors());
 require('dotenv').config();
 let superagent = require('superagent');
 const PORT = process.env.PORT;
+const pg =require('pg');
+// const { query } = require('express');
+const client = new pg.Client(process.env.DATABASE_URL)
 
 
 app.get('/location', handelLocation);
 
 function handelLocation(req, res) {
     let searchQuery = req.query.city;
-    getLocationData(searchQuery,res)
+    getLocationData(searchQuery,res);
 
     
 };
 
 
 function getLocationData(searchQuery,res) {
-    let keyOne=process.env.GEOCODE_API_KEY 
-    let url =`https://us1.locationiq.com/v1/search.php?key=${keyOne}&q=${searchQuery}&format=json`
-superagent.get(url).then(data=>{
-   try{
-    let longitude = data.body[0].lon;
-    let latitude = data.body[0].lat;
-    let displayName = data.body[0].display_name;
-    let responseObject = new Citylocation(searchQuery, displayName, latitude, longitude)
-    res.status(200).send(responseObject);
+   checkDp(searchQuery).then(obj =>{
+       if (obj) {
+           console.log('FROM DATABASE ')
+    res.status(200).send(obj);
 
-   }catch(error){
-       res.status(500).send(error);
-   }
-}).catch(error=> {
-    res.status(500).send('there was an error getting data from API' + error);
+       }else{
 
-});
+        let keyOne=process.env.GEOCODE_API_KEY 
+        let url =`https://us1.locationiq.com/v1/search.php?key=${keyOne}&q=${searchQuery}&format=json`
+    superagent.get(url).then(data=>{
+       try{
+        let longitude = data.body[0].lon;
+        let latitude = data.body[0].lat;
+        let displayName = data.body[0].display_name;
+        let responseObject = new Citylocation(searchQuery, displayName, latitude, longitude)
+        insertLocationData(responseObject)
+        res.status(200).send(responseObject);
+    
+       }catch(error){
+           res.status(500).send(error);
+       }
+    }).catch(error=> {
+        res.status(500).send('there was an error getting data from API' + error);
+    
+    });
+       }
+   });
+   
+   
+  
 
 };
 
@@ -135,17 +151,53 @@ function Park(data) {
     this.url = data.url;
 }
 
+const checkDp =(city_name)=>{
+    let dbQuery=`SELECT * FROM locations WHERE city_name='${city_name}'`
+    return client.query(dbQuery).then(data =>{
+    if (data.rows.length !==0) {
+        let responseObject = new Citylocation(data.rows.city_name, data.rows.formatted_query, data.rows.latitude, data.rows.longitude)
+        return responseObject;
+    }else{
+        return false;
+    }
+    }).catch(error=>{
+        console.log('catch an error'+ error)
+    })
+
+    }
+
+    
+    
+const insertLocationData =(city)=>{
+        let dbQuery = `INSERT INTO  locations(city_name,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4)`
+        let safevalues =[city.city_name,city.formatted_query,city.latitude,city.longitude]
+        client.query(dbQuery,safevalues).then(data =>{
+            console.log('data return back from db' ,data)
+    }).catch(error=>{
+        console.log('an error occured' +error)
+
+    })
+    
+
+
+
+
+
 app.use('*', (req, res) => {
     res.status(500).send('Sorry, something went wrong');
 })
+}
 
 
 
-app.listen(PORT, () => {
-    console.log('the app is listining on port ' + PORT);
-});
 
+client.connect().then(()=>{
+    app.listen(PORT, () => {
+        console.log('the app is listining on port ' + PORT);
+    });
 
-
+}).catch(error =>{
+    console.log(`there is an error ${error}`)
+})
 
 
