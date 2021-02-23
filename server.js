@@ -10,8 +10,8 @@ let superagent = require('superagent');
 const PORT = process.env.PORT;
 const pg =require('pg');
 // const { query } = require('express');
-const client = new pg.Client(process.env.DATABASE_URL)
-
+// const client = new pg.Client(process.env.DATABASE_URL)
+const client = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 app.get('/location', handelLocation);
 
